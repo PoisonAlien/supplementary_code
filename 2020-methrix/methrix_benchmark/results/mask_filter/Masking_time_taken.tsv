@@ -1,0 +1,4 @@
+tool	file	time_secs
+methrix	results/mask_filter//mask_methrix.RDs	7.241687238
+methylKit	results/mask_filter//mask_methylKit.RDs	34.298235228
+RnBeads	results/mask_filter//mask_RnBeads.RDs	226.394263237
