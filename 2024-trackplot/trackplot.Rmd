@@ -1,0 +1,302 @@
+---
+title: "Supplementary data"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This file contains code used for generating results for the manuscript **Trackplot: A fast and lightweight R script for visualizing bigwig files** 
+
+## Dependency
+
+`trackplot` requires [bwtool](https://github.com/CRG-Barcelona/bwtool) to be installed and accessible from the command line. 
+
+1. For macOS: Please download the pre-built binary from [here](https://www.dropbox.com/s/kajx9ya6erzyrim/bwtool_macOS.tar.gz?dl=1)
+
+Make it executable with `chmod +x bwtool`. macOS gatekeeper might complain that it can't run the binary downloaded from the internet. If so, [allow](https://support.apple.com/en-us/HT202491) it in the security settings. 
+
+2. For centOS or debian: Follow these [compilation instructions](https://gist.github.com/PoisonAlien/e19b482ac6146bfb03142a0de1c4fbc8).
+
+Finally move the `bwtool` binary to a PATH (e.g; /usr/local/bin) or to a directory under the PATH. Alternatively, you could also add the path where bwtool is located to R session with the below command.
+
+```{r loadLib, eval=FALSE}
+#Example
+Sys.setenv(PATH = paste("/Users/anand/Documents/bwtool_dir/", Sys.getenv("PATH"), sep=":"))
+```
+
+
+## Load the code
+
+```{r loadScript}
+source("trackplot.R")
+
+# OR If you prefer to install it as a package
+# remotes::install_github(repo = "poisonalien/trackplot")
+```
+
+See [trackplot github](https://github.com/PoisonAlien/trackplot) repo for more installation options.
+
+## IGV style track plots
+
+### Download ENCODE H1 data
+
+Download bigWig files for H1 - Human Embryonic Stem Cell derived cell lines from ENCODE.
+
+```{r downloadH1, eval=FALSE}
+dir.create(path = "data/H1/", showWarnings = FALSE, recursive = TRUE)
+
+options(timeout = max(300, getOption("timeout")))
+
+#TFs
+download.file("http://hgdownload.soe.ucsc.edu/goldenPath/hg19/encodeDCC/wgEncodeHaibTfbs/wgEncodeHaibTfbsH1hescPou5f1sc9081V0416102RawRep1.bigWig", destfile = "data/H1/OCT4.bw", quiet = TRUE)
+download.file("http://hgdownload.soe.ucsc.edu/goldenPath/hg19/encodeDCC/wgEncodeHaibTfbs/wgEncodeHaibTfbsH1hescNanogsc33759V0416102RawRep1.bigWig", destfile = "data/H1/NANOG.bw", quiet = TRUE)
+
+#Histones
+download.file("http://hgdownload.soe.ucsc.edu/goldenPath/hg19/encodeDCC/wgEncodeBroadHistone/wgEncodeBroadHistoneH1hescH2azStdSig.bigWig", destfile = "data/H1/H2AZ.bw", quiet = TRUE)
+download.file("http://hgdownload.soe.ucsc.edu/goldenPath/hg19/encodeDCC/wgEncodeBroadHistone/wgEncodeBroadHistoneH1hescCtcfStdSig.bigWig", destfile = "data/H1/CTCF.bw", quiet = TRUE)
+download.file("http://hgdownload.soe.ucsc.edu/goldenPath/hg19/encodeDCC/wgEncodeBroadHistone/wgEncodeBroadHistoneH1hescH3k4me3StdSig.bigWig", destfile = "data/H1/H3K4ME3.bw", quiet = TRUE)
+download.file("http://hgdownload.soe.ucsc.edu/goldenPath/hg19/encodeDCC/wgEncodeBroadHistone/wgEncodeBroadHistoneH1hescH3k27acStdSig.bigWig", destfile = "data/H1/H3K27AC.bw", quiet = TRUE)
+download.file("http://hgdownload.soe.ucsc.edu/goldenPath/hg19/encodeDCC/wgEncodeBroadHistone/wgEncodeBroadHistoneH1hescH3k4me1StdSig.bigWig", destfile = "data/H1/H3K4ME1.bw", quiet = TRUE)
+
+#Peak files for TFs
+download.file("http://hgdownload.soe.ucsc.edu/goldenPath/hg19/encodeDCC/wgEncodeHaibTfbs/wgEncodeHaibTfbsH1hescPou5f1sc9081V0416102PkRep1.broadPeak.gz", destfile = "data/H1/OCT4.bed.gz", quiet = TRUE)
+download.file("http://hgdownload.soe.ucsc.edu/goldenPath/hg19/encodeDCC/wgEncodeHaibTfbs/wgEncodeHaibTfbsH1hescNanogsc33759V0416102PkRep1.broadPeak.gz", destfile = "data/H1/NANOG.bed.gz", quiet = TRUE)
+```
+
+### Prepare coldata
+
+```{r coldataH1}
+h1_bigWigs = list.files(path = "data/H1/", pattern = "\\.bw$", full.names = TRUE)
+h1_bigWigs = read_coldata(bws = h1_bigWigs, build = "hg19")
+h1_bigWigs
+```
+
+### Exctract signal
+
+```{r esH1}
+#Region to plot
+oct4_loci = "chr6:31125776-31144789"
+
+#Extract bigWig signal for a loci of interest
+t = track_extract(colData = h1_bigWigs, loci = oct4_loci)
+```
+
+### Plot
+
+```{r tp}
+track_cols = c("#d35400","#d35400","#2980b9","#2980b9","#2980b9", "#27ae60","#27ae60") #Some pretty colors for tracks
+oct4_nanog_peaks = c("data/H1/NANOG.bed.gz","data/H1/OCT4.bed.gz") #Peak files 
+
+track_plot(
+  summary_list = t,
+  col = track_cols,
+  show_ideogram = TRUE,
+  genename = c("POU5F1", "TCF19"),
+  peaks = oct4_nanog_peaks,
+  peaks_track_names = c("NANOG", "OCT4"),
+  groupAutoScale = FALSE, ucscChromHMM = "wgEncodeBroadHmmH1hescHMM", y_min = 0
+)
+```
+
+## Dependency heaviness
+
+Number of R dependency packages required by [karyoploteR](https://bioconductor.org/packages/release/bioc/html/karyoploteR.html) and [Gviz](https://bioconductor.org/packages/release/bioc/html/Gviz.html) - two packages which facilitate IGV like track visualization.
+
+Use [pkgndep](https://cran.r-project.org/web/packages/pkgndep/index.html) to measure the dependency heaviness.
+
+```{r dep}
+library(pkgndep)
+
+#get Dependency heaviness with pkgndep
+gviz_ndep = pkgndep::pkgndep(package = "Gviz")
+kp_ndep = pkgndep::pkgndep(package = "karyoploteR")
+tp_ndep = pkgndep::pkgndep(package = "trackplot")
+```
+
+```{r depPlot, fig.width=5.5, fig.height=4}
+par(mar = c(4, 4, 2, 4))
+
+b = barplot(
+  height = c(
+    gviz_ndep$n_by_strong,
+    kp_ndep$n_by_strong,
+    tp_ndep$n_by_strong
+  ),
+  horiz = TRUE,
+  names.arg = c("Gviz", "karyoploteR", "trackplot"),
+  xlab = "No. of dependencies",
+  border = NA,
+  col = "#34495e"
+)
+
+text(
+  c(
+    gviz_ndep$n_by_strong,
+    kp_ndep$n_by_strong,
+    tp_ndep$n_by_strong
+  ),
+  y = b[, 1],
+  labels = c(
+    gviz_ndep$n_by_strong,
+    kp_ndep$n_by_strong,
+    tp_ndep$n_by_strong
+  ),
+  xpd = TRUE,
+  pos = 4
+)
+```
+
+## Profile plots and heatmaps
+
+### Download datset 
+
+Example data from [GSE99171](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE99171) where U87 cell lines are treated with DMSO (control) and dBET6 - a bromodomain protein degrader. Binding sites for BRD4 transcription factors are compared at 2 hour and 24 hours post treamnet.
+
+```{r downloadU87, eval=FALSE}
+dir.create(path = "data/U87/", showWarnings = FALSE, recursive = TRUE)
+options(timeout = max(300, getOption("timeout")))
+
+download.file(url = "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM2634nnn/GSM2634756/suppl/GSM2634756%5FU87%5FBRD4%2Ebw", destfile = "data/U87/BRD4.bw")
+download.file(url = "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM2634nnn/GSM2634756/suppl/GSM2634756%5FU87%5FBRD4%5Fpeaks%2EnarrowPeak%2Egz", destfile = "data/U87/BRD4.bed.gz")
+download.file(url = "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM2634nnn/GSM2634758/suppl/GSM2634758%5FU87%5FBRD4%5FdBET%5F2h%2Ebw", destfile = "data/U87/BRD4_dBET_2h.bw")
+download.file(url = "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM2634nnn/GSM2634757/suppl/GSM2634757%5FU87%5FBRD4%5FdBET%5F24h%2Ebw", destfile = "data/U87/BRD4_dBET_24h.bw")
+```
+
+```{r readU87}
+u87_bigWigs = list.files(path = "data/U87/", pattern = "\\.bw$", full.names = TRUE)
+u87_bigWigs = read_coldata(bws = u87_bigWigs, build = "hg19")
+u87_bigWigs = u87_bigWigs[order(bw_sample_names)] #Order by sample names
+u87_bigWigs
+```
+
+### Profile plot
+
+```{r pd}
+profile_data = profile_extract(colData = u87_bigWigs, bed = "data/U87/BRD4.bed.gz", startFrom = "center", up = 1500, down = 1500)
+```
+
+```{r ps, fig.width=5, fig.height=4}
+profile_summarize(sig_list = profile_data, stat = "mean") |> profile_plot()
+```
+
+### Heatmap
+
+```{r hm, fig.width=6, fig.height=8}
+profile_heatmap(mat_list = profile_data, zmaxs = 0.81, top_profile = TRUE)
+```
+
+## Benchmark against deeptools
+
+Requires [deeptools](https://deeptools.readthedocs.io/en/latest/content/installation.html) and [hyperfine](https://github.com/sharkdp/hyperfine) to be installed.
+
+`benchmark/bm_deeptools.sh` and `benchmark/bm_trackplot.R` contain equivalent code to generate profile plots and heatmaps from the above U87 data. 
+These two scripts are benchmarked with hyperfine and results are written to `benchmark/dt_vs_tp_hf.csv`
+
+
+```{r depBM, engine='bash'}
+#Deeptools commands for computeMatrix, plotProfile and plotHeatmap
+cat benchmark/bm_deeptools.sh
+```
+
+```{r, engine='bash'}
+#Trackplot commands
+cat benchmark/bm_trackplot.R
+```
+
+### Run benchmark
+
+```{r tpBM, engine='bash', eval=FALSE}
+hyperfine --export-csv benchmark/dt_vs_tp_hf.csv --warmup 2 -m 3 -M 5 -n deeptools -n trackplot benchmark/bm_deeptools.sh benchmark/bm_trackplot.R
+```
+
+```{r bmRes}
+#Benchmark results
+bm = data.table::fread(input = "benchmark/dt_vs_tp_hf.csv")
+print(bm)
+```
+
+```{r bmPlot, fig.width=4.5, fig.height=3}
+par(mar = c(4, 3, 1, 4))
+b2 = barplot(bm$mean, horiz = TRUE, names.arg = c("deeptools", "trackplot"), xlab = "Time taken (seconds)", border = NA, col = "#34495e")
+text(bm$mean, y = b2[,1], labels = round(bm$mean, 2), xpd = TRUE, pos = 4)
+```
+
+```{r, echo=FALSE, include=FALSE}
+pdf(file = "tp.pdf", width = 7, height = 5, bg = "white")
+track_plot(
+  summary_list = t,
+  col = track_cols,
+  show_ideogram = TRUE,
+  genename = c("POU5F1", "TCF19"),
+  peaks = oct4_nanog_peaks,
+  peaks_track_names = c("NANOG", "OCT4"),
+  groupAutoScale = FALSE, ucscChromHMM = "wgEncodeBroadHmmH1hescHMM", y_min = 0
+)
+dev.off()
+
+pdf(file = "dep.pdf", width = 5, height = 3, bg = "white")
+layout(mat = matrix(data = c(1,2), nrow = 2), heights = c(3,2))
+
+par(mar = c(3, 3, 1, 4))
+b = barplot(height = c(gviz_ndep$n_by_strong, kp_ndep$n_by_strong, tp_ndep$n_by_strong), horiz = TRUE, names.arg = c("Gviz", "karyoploteR", "trackplot"), xlab = "No. of dependencies", border = NA, col = "#34495e")
+text(c(gviz_ndep$n_by_strong, kp_ndep$n_by_strong, tp_ndep$n_by_strong), y = b[,1], labels = c(gviz_ndep$n_by_strong, kp_ndep$n_by_strong, tp_ndep$n_by_strong), xpd = TRUE, pos = 4)
+
+par(mar = c(3, 3, 1, 4))
+b2 = barplot(bm$mean, horiz = TRUE, names.arg = c("deeptools", "trackplot"), xlab = "Time taken (seconds)", border = NA, col = "#34495e")
+text(bm$mean, y = b2[,1], labels = round(bm$mean, 2), xpd = TRUE, pos = 4)
+dev.off()
+
+pdf(file = "pp.pdf", width = 3.5, height = 3, bg = "white")
+profile_summarize(sig_list = profile_data, stat = "mean") |> profile_plot()
+dev.off()
+
+pdf(file = "hm.pdf", width = 3.5, height = 5, bg = "white")
+profile_heatmap(mat_list = profile_data, zmaxs = 0.81, top_profile = TRUE, title_size = 0.6)
+dev.off()
+```
+
+## PCA
+
+`trackplot` can be used to extract signal intensities for genomic regions of interest and perform PC analysis. 
+
+___NOTE___ Make sure the bigWig files are properly normalized and comparable across the samples.
+
+Example data from [GSE231425](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE231425) with H3K27ac signals from hematopoietic stem and, myeloid progenitor cells.
+
+```{r downloadU87, eval=FALSE}
+dir.create(path = "data/HSC/", showWarnings = FALSE, recursive = TRUE)
+options(timeout = max(300, getOption("timeout")))
+
+download.file(url = "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM7277nnn/GSM7277506/suppl/GSM7277506_Coverage_H3K27ac_HSC.bw", destfile = "data/HSC/HSC.bw")
+download.file(url = "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM7277nnn/GSM7277507/suppl/GSM7277507_Coverage_H3K27ac_CMP.bw", destfile = "data/HSC/CMP.bw")
+download.file(url = "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM7277nnn/GSM7277508/suppl/GSM7277508_Coverage_H3K27ac_GMP.bw", destfile = "data/HSC/GMP.bw")
+download.file(url = "https://ftp.ncbi.nlm.nih.gov/geo/samples/GSM7277nnn/GSM7277509/suppl/GSM7277509_Coverage_H3K27ac_MEP.bw", destfile = "data/HSC/MEP.bw")
+```
+
+Prepare input data
+```{r}
+hsc_bws = list.files(path = "data/HSC/", pattern = "bw", full.names = TRUE)
+hsc_cd = trackplot::read_coldata(bws = hsc_bws, build = "hg38")
+```
+
+Extract summary for all protein coding genes (1200bp up and 800 down of TSS)
+```{r}
+hsc_summary = trackplot::extract_summary(colData = hsc_cd, up = 1200, down = 800, pc_genes = TRUE)
+```
+
+Plot PCA 
+```{r}
+pdf(file = "pca.pdf", width = 4, height = 4, bg = "white")
+trackplot::pca_plot(summary_list = hsc_summary, size = 1.2, log2 = TRUE, show_cree = FALSE)
+dev.off()
+```
+
+
+
+## SessionInfo
+
+```{r}
+sessionInfo()
+```
