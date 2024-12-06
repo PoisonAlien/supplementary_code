@@ -1,0 +1,1 @@
+{"z":{"FAB_classification":["M2","M7","M0","M2","M1","M4"]},"y":{"SNV":[["Missense","Multi_Hit"],["Truncating","Multi_Hit"],["Truncating",""],["Truncating",""],["Missense",""],["Missense",""]],"CNV":[["",""],["",""],["",""],["",""],["",""],["",""]],"smps":["TCGA-AB-2908","TCGA-AB-2938","TCGA-AB-2822","TCGA-AB-2839","TCGA-AB-2863","TCGA-AB-2912"],"vars":["DNMT3A","TP53"]}}
